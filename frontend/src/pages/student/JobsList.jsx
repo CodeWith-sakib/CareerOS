@@ -28,6 +28,7 @@ const JobsList = () => {
             const q = query(
                 collection(db, COLLECTIONS.JOBS),
                 where('status', '==', 'active'),
+                where('isAdminApproved', '==', true), // Only show admin-approved jobs
                 orderBy('createdAt', 'desc')
             );
 

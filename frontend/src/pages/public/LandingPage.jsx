@@ -57,7 +57,7 @@ const portalCards = [
         hoverBorder: 'hover:border-blue-400',
         iconBg: 'bg-blue-100',
         iconColor: 'text-blue-600',
-        link: '/register',
+        link: '/student/register',
         linkLabel: 'Get Started',
         isLogin: false,
     },
@@ -72,7 +72,7 @@ const portalCards = [
         hoverBorder: 'hover:border-emerald-400',
         iconBg: 'bg-emerald-100',
         iconColor: 'text-emerald-600',
-        link: '/register',
+        link: '/recruiter/register',
         linkLabel: 'Get Started',
         isLogin: false,
     },
@@ -87,7 +87,7 @@ const portalCards = [
         hoverBorder: 'hover:border-purple-400',
         iconBg: 'bg-purple-100',
         iconColor: 'text-purple-600',
-        link: '/login?role=admin',
+        link: '/admin/login',
         linkLabel: 'Admin Login',
         isLogin: true,
     },
@@ -145,7 +145,7 @@ const LandingPage = () => {
                     </div>
 
                     {/* Portal Selection Cards */}
-                    <div className="max-w-5xl mx-auto">
+                    <div id="portals" className="max-w-5xl mx-auto">
                         <h2 className="text-center text-lg font-semibold text-gray-500 uppercase tracking-wider mb-8">
                             Who Are You ?
                         </h2>
@@ -192,9 +192,9 @@ const LandingPage = () => {
                     {/* Quick sign-in link */}
                     <div className="text-center mt-8">
                         <span className="text-gray-500">Already have an account? </span>
-                        <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">
-                            Sign in here →
-                        </Link>
+                        <Link to="/student/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">Student sign in</Link>
+                        <span className="text-gray-400 mx-2">·</span>
+                        <Link to="/recruiter/login" className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">Recruiter sign in</Link>
                     </div>
                 </div>
             </section>
@@ -285,8 +285,8 @@ const LandingPage = () => {
                             <h3 className="text-white font-semibold mb-4">Quick Links</h3>
                             <ul className="space-y-2 text-sm">
                                 <li><Link to="/" className="hover:text-white transition-colors">Home</Link></li>
-                                <li><Link to="/login" className="hover:text-white transition-colors">Sign In</Link></li>
-                                <li><Link to="/register" className="hover:text-white transition-colors">Register</Link></li>
+                                <li><Link to="/student/login" className="hover:text-white transition-colors">Student Sign In</Link></li>
+                                <li><Link to="/recruiter/login" className="hover:text-white transition-colors">Recruiter Sign In</Link></li>
                                 <li><Link to="/forgot-password" className="hover:text-white transition-colors">Reset Password</Link></li>
                             </ul>
                         </div>
@@ -295,9 +295,9 @@ const LandingPage = () => {
                         <div>
                             <h3 className="text-white font-semibold mb-4">Portals</h3>
                             <ul className="space-y-2 text-sm">
-                                <li><Link to="/register" className="hover:text-white transition-colors">Student Portal</Link></li>
-                                <li><Link to="/register" className="hover:text-white transition-colors">Recruiter Portal</Link></li>
-                                <li><Link to="/login?role=admin" className="hover:text-white transition-colors">Admin Portal</Link></li>
+                                <li><Link to="/student/register" className="hover:text-white transition-colors">Student Portal</Link></li>
+                                <li><Link to="/recruiter/register" className="hover:text-white transition-colors">Recruiter Portal</Link></li>
+                                <li><Link to="/admin/login" className="hover:text-white transition-colors">Admin Portal</Link></li>
                             </ul>
                         </div>
 

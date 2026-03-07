@@ -67,6 +67,18 @@ const VerifyOTP = () => {
         setLoading(true);
         try {
             const result = await verifyOTP(uid, enteredOTP);
+
+            // Students/recruiters need admin approval before they can log in
+            if (result.needsAdminApproval) {
+                const pendingApprovalMessage = result.role === 'recruiter'
+                    ? 'your request for new accound sent to admin. you may login once the admin verifys'
+                    : 'Your account has been created! You can access it once the admin verifies your account.';
+
+                toast.success(pendingApprovalMessage, { duration: 6000 });
+                navigate('/', { replace: true });
+                return;
+            }
+
             toast.success('Email verified successfully! Welcome to CareerOS.');
 
             // Redirect to dashboard based on role

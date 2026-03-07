@@ -13,6 +13,11 @@ import LoginPage from '@pages/auth/LoginPage';
 import RegisterPage from '@pages/auth/RegisterPage';
 import ForgotPasswordPage from '@pages/auth/ForgotPasswordPage';
 import VerifyOTP from '@pages/auth/VerifyOTP';
+import AdminLoginPage from '@pages/auth/AdminLoginPage';
+import StudentLoginPage from '@pages/auth/StudentLoginPage';
+import RecruiterLoginPage from '@pages/auth/RecruiterLoginPage';
+import StudentRegisterPage from '@pages/auth/StudentRegisterPage';
+import RecruiterRegisterPage from '@pages/auth/RecruiterRegisterPage';
 
 // Student Pages
 import StudentDashboard from '@pages/student/Dashboard';
@@ -34,8 +39,13 @@ import RecruiterAnalytics from '@pages/recruiter/Analytics';
 // Admin Pages
 import AdminDashboard from '@pages/admin/Dashboard';
 import ManageStudents from '@pages/admin/ManageStudents';
+import StudentProfiles from '@pages/admin/StudentProfiles';
+import StudentVerification from '@pages/admin/StudentVerification';
 import ManageRecruiters from '@pages/admin/ManageRecruiters';
+import RecruiterProfiles from '@pages/admin/RecruiterProfiles';
+import RecruiterVerification from '@pages/admin/RecruiterVerification';
 import PlacementAnalytics from '@pages/admin/PlacementAnalytics';
+import JobApprovals from '@pages/admin/JobApprovals';
 import Reports from '@pages/admin/Reports';
 
 // Protected Route Component called ProtectedRoute
@@ -111,6 +121,11 @@ function App() {
                     path="/register"
                     element={user && userProfile ? <Navigate to={getDefaultRoute()} replace /> : <RegisterPage />}
                 />
+                <Route path="/admin/login" element={user && userProfile ? <Navigate to={getDefaultRoute()} replace /> : <AdminLoginPage />} />
+                <Route path="/student/login" element={user && userProfile ? <Navigate to={getDefaultRoute()} replace /> : <StudentLoginPage />} />
+                <Route path="/student/register" element={user && userProfile ? <Navigate to={getDefaultRoute()} replace /> : <StudentRegisterPage />} />
+                <Route path="/recruiter/login" element={user && userProfile ? <Navigate to={getDefaultRoute()} replace /> : <RecruiterLoginPage />} />
+                <Route path="/recruiter/register" element={user && userProfile ? <Navigate to={getDefaultRoute()} replace /> : <RecruiterRegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/verify-otp/:uid" element={<VerifyOTP />} />
             </Route>
@@ -162,7 +177,12 @@ function App() {
             >
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="students" element={<ManageStudents />} />
+                <Route path="students/profiles" element={<StudentProfiles />} />
+                <Route path="students/verification" element={<StudentVerification />} />
                 <Route path="recruiters" element={<ManageRecruiters />} />
+                <Route path="recruiters/profiles" element={<RecruiterProfiles />} />
+                <Route path="recruiters/verification" element={<RecruiterVerification />} />
+                <Route path="jobs/approvals" element={<JobApprovals />} />
                 <Route path="analytics" element={<PlacementAnalytics />} />
                 <Route path="reports" element={<Reports />} />
             </Route>

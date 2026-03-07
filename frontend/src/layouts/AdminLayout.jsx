@@ -5,6 +5,7 @@ import {
     HomeIcon,
     AcademicCapIcon,
     BuildingOfficeIcon,
+    BriefcaseIcon,
     ChartBarIcon,
     DocumentChartBarIcon,
     UserCircleIcon,
@@ -18,6 +19,7 @@ const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
     { name: 'Manage Students', href: '/admin/students', icon: AcademicCapIcon },
     { name: 'Manage Recruiters', href: '/admin/recruiters', icon: BuildingOfficeIcon },
+    { name: 'Job Approvals', href: '/admin/jobs/approvals', icon: BriefcaseIcon },
     { name: 'Analytics', href: '/admin/analytics', icon: ChartBarIcon },
     { name: 'Reports', href: '/admin/reports', icon: DocumentChartBarIcon },
 ];

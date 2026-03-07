@@ -11,6 +11,7 @@ export const APPLICATION_STATUS = {
     SHORTLISTED: 'shortlisted',
     INTERVIEW_SCHEDULED: 'interview_scheduled',
     SELECTED: 'selected',
+    PLACED: 'placed',
     REJECTED: 'rejected',
 };
 
@@ -20,6 +21,7 @@ export const STATUS_LABELS = {
     [APPLICATION_STATUS.SHORTLISTED]: 'Shortlisted',
     [APPLICATION_STATUS.INTERVIEW_SCHEDULED]: 'Interview Scheduled',
     [APPLICATION_STATUS.SELECTED]: 'Selected',
+    [APPLICATION_STATUS.PLACED]: 'Placed',
     [APPLICATION_STATUS.REJECTED]: 'Rejected',
 };
 
@@ -29,6 +31,7 @@ export const STATUS_COLORS = {
     [APPLICATION_STATUS.SHORTLISTED]: 'bg-yellow-100 text-yellow-800',
     [APPLICATION_STATUS.INTERVIEW_SCHEDULED]: 'bg-purple-100 text-purple-800',
     [APPLICATION_STATUS.SELECTED]: 'bg-green-100 text-green-800',
+    [APPLICATION_STATUS.PLACED]: 'bg-emerald-100 text-emerald-800',
     [APPLICATION_STATUS.REJECTED]: 'bg-red-100 text-red-800',
 };
 
