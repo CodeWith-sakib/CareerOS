@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import './HomePage.css';
 
 const companyNames = [
@@ -21,6 +22,8 @@ const companyNames = [
 ];
 
 function Navbar() {
+  const { currentUser, logout } = useAuth();
+
   return (
     <nav className="navbar">
       <div className="navbar-inner">
@@ -29,8 +32,17 @@ function Navbar() {
           <span className="brand-text">CareerOS</span>
         </div>
         <div className="navbar-links">
-          <Link to="/login" className="nav-link">Sign In</Link>
-          <Link to="/register" className="nav-btn">Get Started</Link>
+          {currentUser ? (
+            <>
+              <span className="nav-greeting">Hi, {currentUser.displayName || 'User'}</span>
+              <button onClick={logout} className="nav-btn nav-logout">Logout</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="nav-link">Sign In</Link>
+              <Link to="/register" className="nav-btn">Get Started</Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

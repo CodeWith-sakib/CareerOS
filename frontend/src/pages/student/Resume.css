@@ -1,0 +1,124 @@
+/* ===== RESUME PAGE ===== */
+.resume-page .page-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.resume-page .page-subtitle {
+  font-size: 15px;
+  color: #64748b;
+  margin: 0 0 28px;
+}
+
+.resume-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 32px;
+}
+
+.upload-zone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 60px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.upload-zone:hover {
+  border-color: #0ea5e9;
+  background: #f0f9ff;
+}
+
+.upload-icon {
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+.upload-zone h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.upload-zone p {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.upload-hint {
+  margin-top: 8px !important;
+  font-size: 12px !important;
+  color: #cbd5e1 !important;
+}
+
+.upload-btn {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 10px 24px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.upload-btn:hover {
+  background: #1d4ed8;
+}
+
+/* File preview */
+.file-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.file-icon {
+  color: #2563eb;
+}
+
+.file-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 2px;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.remove-btn:hover {
+  background: #fef2f2;
+}
