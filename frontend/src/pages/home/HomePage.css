@@ -76,6 +76,16 @@
 .nav-btn:hover {
   background: #dc2626;
 }
+.nav-greeting {
+  font-size: 15px;
+  color: #334155;
+  font-weight: 500;
+}
+.nav-logout {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
 
 /* ===== HERO ===== */
 .hero {

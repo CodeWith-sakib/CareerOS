@@ -1,0 +1,68 @@
+/* ===== INTERVIEWS ===== */
+.interviews .page-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.interviews .page-subtitle {
+  font-size: 15px;
+  color: #64748b;
+  margin: 0 0 28px;
+}
+
+.interview-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.tab-btn {
+  padding: 8px 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.tab-btn:hover {
+  border-color: #94a3b8;
+}
+
+.tab-btn.active {
+  background: #0f172a;
+  color: #fff;
+  border-color: #0f172a;
+}
+
+.interviews-empty {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.interviews-empty .empty-icon {
+  color: #cbd5e1;
+  margin-bottom: 12px;
+}
+
+.interviews-empty h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 8px;
+}
+
+.interviews-empty p {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0;
+}
