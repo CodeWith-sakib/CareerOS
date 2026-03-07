@@ -1,0 +1,197 @@
+/* ===== REGISTER PAGE ===== */
+.register-wrapper {
+  min-height: 100vh;
+  background: #f1f5f9;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #1e293b;
+}
+
+.register-page {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: calc(100vh - 64px);
+  padding: 40px 32px 60px;
+}
+
+.register-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 48px 44px;
+  width: 480px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  text-align: center;
+}
+
+.register-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.register-logo-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: #0ea5e9;
+  color: #fff;
+  font-weight: 700;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.register-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.register-subtitle {
+  font-size: 15px;
+  color: #64748b;
+  margin: 0 0 32px;
+}
+
+/* Form */
+.register-form {
+  text-align: left;
+}
+
+.register-form .form-group {
+  margin-bottom: 20px;
+}
+
+.register-form .form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.register-form .form-group input,
+.register-form .form-group select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 15px;
+  color: #1e293b;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.register-form .form-group input:focus,
+.register-form .form-group select:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.register-form .form-group input::placeholder {
+  color: #94a3b8;
+}
+
+.form-hint {
+  display: block;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* Role toggle */
+.role-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.role-toggle-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 16px 12px;
+  border: 2px solid #d1d5db;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  font-family: inherit;
+}
+
+.role-toggle-btn strong {
+  font-size: 15px;
+  color: #334155;
+}
+
+.role-toggle-btn span {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.role-toggle-btn.active {
+  border-color: #0ea5e9;
+  background: #f0f9ff;
+}
+
+.role-toggle-btn.active strong {
+  color: #0ea5e9;
+}
+
+.role-toggle-btn:hover:not(.active) {
+  border-color: #94a3b8;
+}
+
+/* Submit */
+.register-btn {
+  width: 100%;
+  padding: 14px;
+  background: #0ea5e9;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 4px;
+}
+
+.register-btn:hover {
+  background: #0284c7;
+}
+
+/* Footer links */
+.register-footer {
+  margin-top: 24px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.register-footer .signin-link {
+  color: #0ea5e9;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.register-footer .signin-link:hover {
+  text-decoration: underline;
+}
+
+.register-card .back-home {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #94a3b8;
+  text-decoration: none;
+}
+
+.register-card .back-home:hover {
+  color: #0ea5e9;
+}
