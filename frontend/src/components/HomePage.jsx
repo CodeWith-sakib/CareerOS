@@ -30,7 +30,7 @@ function Navbar() {
         </div>
         <div className="navbar-links">
           <Link to="/login" className="nav-link">Sign In</Link>
-          <Link to="/" className="nav-btn">Get Started</Link>
+          <Link to="/register" className="nav-btn">Get Started</Link>
         </div>
       </div>
     </nav>
