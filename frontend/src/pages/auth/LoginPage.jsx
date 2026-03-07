@@ -1,115 +1,163 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
-import './LoginPage.css';
+import { useAuth } from '@context/AuthContext';
+import toast from 'react-hot-toast';
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+const LoginPage = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const { signIn, userProfile } = useAuth();
+    const navigate = useNavigate();
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError('');
+    // Navigate after userProfile is loaded
+    useEffect(() => {
+        if (userProfile) {
+            const getRoute = () => {
+                switch (userProfile.role) {
+                    case 'student':
+                        return '/student/dashboard';
+                    case 'recruiter':
+                        return '/recruiter/dashboard';
+                    case 'admin':
+                        return '/admin/dashboard';
+                    default:
+                        return '/';
+                }
+            };
+            navigate(getRoute(), { replace: true });
+        }
+    }, [userProfile, navigate]);
 
-    if (!email || !password) {
-      return setError('Please fill in all fields.');
-    }
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-    setLoading(true);
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      const snap = await getDoc(doc(db, 'users', cred.user.uid));
-      const role = snap.exists() ? snap.data().role : 'student';
-      if (role === 'student') {
-        navigate('/student/dashboard');
-      } else if (role === 'recruiter') {
-        navigate('/recruiter/dashboard');
-      } else {
-        navigate('/');
-      }
-    } catch (err) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        setError('Invalid email or password.');
-      } else if (err.code === 'auth/invalid-email') {
-        setError('Invalid email address.');
-      } else {
-        setError(err.message);
-      }
-    }
-    setLoading(false);
-  }
-  return (
-    <div className="login-wrapper">
-      {/* Navbar */}
-      <nav className="navbar">
-        <div className="navbar-inner">
-          <Link to="/" className="navbar-brand">
-            <div className="brand-icon">C</div>
-            <span className="brand-text">CareerOS</span>
-          </Link>
-          <div className="navbar-links">
-            <Link to="/login" className="nav-link">Sign In</Link>
-            <Link to="/" className="nav-btn">Get Started</Link>
-          </div>
+        if (!email || !password) {
+            toast.error('Please fill in all fields');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await signIn(email, password);
+            toast.success('Welcome back!');
+            // Navigation will happen via useEffect when userProfile loads
+        } catch (error) {
+            console.error('Login error:', error);
+            toast.error(error.message || 'Failed to sign in');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-[calc(100vh-12rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md w-full space-y-8">
+                <div>
+                    <div className="flex justify-center">
+                        <Link to="/" className="w-16 h-16 bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl flex items-center justify-center hover:shadow-lg transition-shadow" title="Go to Home">
+                            <span className="text-white font-bold text-2xl">C</span>
+                        </Link>
+                    </div>
+                    <h2 className="mt-6 text-center text-3xl font-display font-bold text-gray-900">
+                        Welcome Back
+                    </h2>
+                    <p className="mt-2 text-center text-sm text-gray-600">
+                        Sign in to your CareerOS account
+                    </p>
+                </div>
+
+                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="email" className="label">
+                                Email Address
+                            </label>
+                            <input
+                                id="email"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                className="input"
+                                placeholder="you@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="password" className="label">
+                                Password
+                            </label>
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                                className="input"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <input
+                                id="remember-me"
+                                name="remember-me"
+                                type="checkbox"
+                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                            />
+                            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                                Remember me
+                            </label>
+                        </div>
+
+                        <div className="text-sm">
+                            <Link
+                                to="/forgot-password"
+                                className="font-medium text-primary-600 hover:text-primary-500"
+                            >
+                                Forgot password?
+                            </Link>
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full btn-primary btn-lg"
+                    >
+                        {loading ? 'Signing in...' : 'Sign In'}
+                    </button>
+
+                    <div className="text-center space-y-2">
+                        <span className="text-sm text-gray-600">
+                            Don&apos;t have an account?{' '}
+                            <Link
+                                to="/register"
+                                className="font-medium text-primary-600 hover:text-primary-500"
+                            >
+                                Sign up
+                            </Link>
+                        </span>
+                        <div>
+                            <Link
+                                to="/"
+                                className="text-sm text-gray-500 hover:text-primary-600 transition-colors inline-flex items-center gap-1"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                                Back to Home
+                            </Link>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
-      </nav>
-
-      {/* Login Card */}
-      <div className="login-page">
-        <div className="login-card">
-          <div className="login-logo">
-            <div className="login-logo-icon">C</div>
-          </div>
-          <h1 className="login-title">Welcome Back</h1>
-          <p className="login-subtitle">Sign in to your CareerOS account</p>
-
-          <form className="login-form" onSubmit={handleSubmit}>
-            {error && <div className="form-error">{error}</div>}
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <input
-                type="email"
-                id="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <div className="form-row">
-              <label className="remember-me">
-                <input type="checkbox" />
-                <span>Remember me</span>
-              </label>
-              <a href="#" className="forgot-link">Forgot password?</a>
-            </div>
-            <button type="submit" className="login-btn" disabled={loading}>
-              {loading ? 'Signing In...' : 'Sign In'}
-            </button>
-          </form>
-
-          <p className="login-footer">
-            Don't have an account? <Link to="/register" className="signup-link">Sign up</Link>
-          </p>
-          <Link to="/" className="back-home">← Back to Home</Link>
-        </div>
-      </div>
-    </div>
-  );
-}
+    );
+};
+export default LoginPage;
