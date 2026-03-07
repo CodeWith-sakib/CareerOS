@@ -30,6 +30,13 @@ const ManageJobs = () => {
     const [shortlisting, setShortlisting] = useState(false);
     const [showShortlistWarning, setShowShortlistWarning] = useState(false);
 
+    // Final selection mode state (for placing students after shortlisting)
+    const [showShortlistedView, setShowShortlistedView] = useState(false);
+    const [finalSelectionMode, setFinalSelectionMode] = useState(false);
+    const [finalSelectedIds, setFinalSelectedIds] = useState(new Set());
+    const [completingRecruitment, setCompletingRecruitment] = useState(false);
+    const [showFinalPlacementWarning, setShowFinalPlacementWarning] = useState(false);
+
     // Real-time application counts per job
     const [appCounts, setAppCounts] = useState({});
     const appCountUnsubRef = useRef(null);
@@ -385,6 +392,106 @@ const ManageJobs = () => {
         }
     };
 
+    // Toggle final selection mode for placing students
+    const toggleFinalSelectionMode = () => {
+        setFinalSelectionMode((prev) => !prev);
+        setFinalSelectedIds(new Set());
+    };
+
+    // Toggle single applicant selection for final placement
+    const toggleFinalSelectApplicant = (appId) => {
+        setFinalSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(appId)) {
+                next.delete(appId);
+            } else {
+                next.add(appId);
+            }
+            return next;
+        });
+    };
+
+    // Show confirmation before final placement
+    const requestFinalPlacement = () => {
+        if (finalSelectedIds.size === 0) {
+            setFinalSelectionMode(false);
+            return;
+        }
+        setShowFinalPlacementWarning(true);
+    };
+
+    // Complete recruitment - mark selected students as placed with package amount
+    const handleFinalPlacement = async () => {
+        setShowFinalPlacementWarning(false);
+
+        try {
+            setCompletingRecruitment(true);
+            const batch = writeBatch(db);
+            
+            // Get the job's salary amount as the package
+            const packageAmount = selectedJob?.salary?.amount || 0;
+            const salaryType = selectedJob?.salary?.type || 'yearly';
+
+            // Mark selected applicants as placed
+            for (const appId of finalSelectedIds) {
+                const appRef = doc(db, COLLECTIONS.APPLICATIONS, appId);
+                const appDoc = await getDoc(appRef);
+                if (appDoc.exists()) {
+                    const currentData = appDoc.data();
+                    const statusHistory = currentData.statusHistory || [];
+                    batch.update(appRef, {
+                        status: 'placed',
+                        statusHistory: [
+                            ...statusHistory,
+                            {
+                                status: 'placed',
+                                timestamp: Timestamp.now(),
+                                note: 'Selected for final placement',
+                            },
+                        ],
+                        packageAmount: packageAmount,
+                        packageType: salaryType,
+                        placedAt: Timestamp.now(),
+                        updatedAt: Timestamp.now(),
+                    });
+                }
+            }
+
+            await batch.commit();
+
+            // Update job status to placement_completed
+            if (selectedJob?.id) {
+                const jobRef = doc(db, COLLECTIONS.JOBS, selectedJob.id);
+                await updateDoc(jobRef, {
+                    status: 'placement_completed',
+                    updatedAt: serverTimestamp(),
+                });
+            }
+
+            // Refresh applicants list
+            if (selectedJob?.id) {
+                const appsQuery = query(
+                    collection(db, COLLECTIONS.APPLICATIONS),
+                    where('jobId', '==', selectedJob.id)
+                );
+                const snapshot = await getDocs(appsQuery);
+                const updatedApplicants = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setApplicants(updatedApplicants);
+            }
+
+            setFinalSelectedIds(new Set());
+            setFinalSelectionMode(false);
+            setShowShortlistedView(false);
+            setSelectedJob(null);
+            setError(null);
+        } catch (err) {
+            console.error('Error completing final placement:', err);
+            setError('Failed to complete placement. Please try again.');
+        } finally {
+            setCompletingRecruitment(false);
+        }
+    };
+
     // Format date
     const formatDate = (timestamp) => {
         if (!timestamp) return 'N/A';
@@ -403,12 +510,14 @@ const ManageJobs = () => {
             draft: 'bg-yellow-100 text-yellow-800',
             closed: 'bg-gray-100 text-gray-800',
             recruitment_completed: 'bg-purple-100 text-purple-800',
+            placement_completed: 'bg-emerald-100 text-emerald-800',
         };
         const labels = {
             active: 'Active',
             draft: 'Draft',
             closed: 'Closed',
-            recruitment_completed: 'Recruitment Completed',
+            recruitment_completed: 'Shortlisting Completed',
+            placement_completed: 'Placement Completed',
         };
         return (
             <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] || styles.draft}`}>
@@ -466,31 +575,72 @@ const ManageJobs = () => {
                     <div className="flex items-center gap-3">
                         {/* Shortlisting Mode Toggle */}
                         {applicants.length > 0 && (
-                            <button
-                                onClick={toggleShortlistMode}
-                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    shortlistMode
-                                        ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-400 shadow-sm'
-                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                                }`}
-                            >
-                                {shortlistMode ? (
-                                    <>
+                            selectedJob?.status === 'placement_completed' ? (
+                                <button
+                                    disabled
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-100 text-emerald-700 border border-emerald-300 cursor-not-allowed"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                    </svg>
+                                    Placement Completed
+                                </button>
+                            ) : selectedJob?.status === 'recruitment_completed' ? (
+                                <>
+                                    <button
+                                        disabled
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-500 border border-gray-300 cursor-not-allowed"
+                                    >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        Exit Shortlisting Mode
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                        </svg>
-                                        Enable Shortlisting Mode
-                                    </>
-                                )}
-                            </button>
+                                        Shortlisting Completed
+                                    </button>
+                                    
+                                    {/* Show Shortlisted Students Button */}
+                                    {appCounts[selectedJob.id]?.shortlisted > 0 && (
+                                        <button
+                                            onClick={() => setShowShortlistedView((prev) => !prev)}
+                                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                                showShortlistedView
+                                                    ? 'bg-blue-100 text-blue-800 border-2 border-blue-400 shadow-sm'
+                                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                            }`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                            </svg>
+                                            {showShortlistedView ? 'Show All Applicants' : 'Show Shortlisted Students'}
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                <button
+                                    onClick={toggleShortlistMode}
+                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        shortlistMode
+                                            ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-400 shadow-sm'
+                                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {shortlistMode ? (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            Exit Shortlisting Mode
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                            </svg>
+                                            Enable Shortlisting Mode
+                                        </>
+                                    )}
+                                </button>
+                            )
                         )}
                         <StatusBadge status={selectedJob.status} />
                     </div>
@@ -526,8 +676,8 @@ const ManageJobs = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
                 <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium text-gray-700 mr-2">Filter:</span>
-                    {['all', 'active', 'draft', 'closed', 'recruitment_completed'].map((status) => {
-                        const filterLabels = { all: 'All', active: 'Active', draft: 'Draft', closed: 'Closed', recruitment_completed: 'Completed' };
+                    {['all', 'active', 'draft', 'closed', 'recruitment_completed', 'placement_completed'].map((status) => {
+                        const filterLabels = { all: 'All', active: 'Active', draft: 'Draft', closed: 'Closed', recruitment_completed: 'Shortlisting Done', placement_completed: 'Placement Done' };
                         return (
                             <button
                                 key={status}
@@ -590,7 +740,8 @@ const ManageJobs = () => {
                     {filteredJobs.map((job) => (
                         <div
                             key={job.id}
-                            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                            onClick={() => viewApplicants(job)}
+                            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all cursor-pointer hover:border-blue-300"
                         >
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                 {/* Job Info */}
@@ -598,6 +749,24 @@ const ManageJobs = () => {
                                     <div className="flex items-center gap-3 mb-2">
                                         <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
                                         <StatusBadge status={job.status} />
+                                        {/* Admin Approval Status Badge */}
+                                        {job.status !== 'draft' && (
+                                            job.isAdminApproved ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                    </svg>
+                                                    Approved
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                                    <svg className="w-3 h-3 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                    </svg>
+                                                    Pending Approval
+                                                </span>
+                                            )
+                                        )}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
                                         <span className="flex items-center gap-1">
@@ -693,16 +862,10 @@ const ManageJobs = () => {
                                 {/* Actions */}
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => viewApplicants(job)}
-                                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                        title="View Applicants"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                        </svg>
-                                    </button>
-                                    <button
-                                        onClick={() => openEditModal(job)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openEditModal(job);
+                                        }}
                                         className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                         title="Edit Job"
                                     >
@@ -718,7 +881,7 @@ const ManageJobs = () => {
                                     {job.status === 'recruitment_completed' ? (
                                         <span
                                             className="p-2 text-purple-400 cursor-not-allowed rounded-lg"
-                                            title="Recruitment completed — cannot toggle status"
+                                            title="Shortlisting completed — cannot toggle status"
                                         >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -726,7 +889,10 @@ const ManageJobs = () => {
                                         </span>
                                     ) : (
                                         <button
-                                            onClick={() => toggleJobStatus(job)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleJobStatus(job);
+                                            }}
                                             className={`p-2 rounded-lg transition-colors ${job.status === 'active'
                                                     ? 'text-yellow-600 hover:bg-yellow-50'
                                                     : 'text-green-600 hover:bg-green-50'
@@ -761,7 +927,10 @@ const ManageJobs = () => {
                                         </button>
                                     )}
                                     <button
-                                        onClick={() => setDeleteModal({ open: true, job })}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDeleteModal({ open: true, job });
+                                        }}
                                         className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                         title="Delete Job"
                                     >
@@ -833,31 +1002,130 @@ const ManageJobs = () => {
                             </div>
                         )}
 
-                        {applicants.map((app) => {
-                            const isSelected = selectedIds.has(app.id);
+                        {/* Final Selection Mode Banner for Shortlisted Students */}
+                        {showShortlistedView && !shortlistMode && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-blue-200 rounded-lg flex items-center justify-center">
+                                            <svg className="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-blue-800">
+                                                Shortlisted Students ({applicants.filter(a => a.status === APPLICATION_STATUS.SHORTLISTED).length})
+                                            </p>
+                                            <p className="text-xs text-blue-700">
+                                                {finalSelectionMode 
+                                                    ? 'Select students to mark as placed with package offer.'
+                                                    : 'Enable selection mode to complete final recruitment process.'
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {finalSelectionMode && finalSelectedIds.size > 0 && (
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                                {finalSelectedIds.size} selected
+                                            </span>
+                                        )}
+                                        {!finalSelectionMode ? (
+                                            <button
+                                                onClick={toggleFinalSelectionMode}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                                </svg>
+                                                Enable Selection Mode
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={toggleFinalSelectionMode}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={requestFinalPlacement}
+                                                    disabled={finalSelectedIds.size === 0 || completingRecruitment}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {completingRecruitment ? (
+                                                        <>
+                                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                            Processing...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            Complete Recruitment
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Filter applicants based on view mode */}
+                        {(() => {
+                            const displayApplicants = showShortlistedView 
+                                ? applicants.filter(a => a.status === APPLICATION_STATUS.SHORTLISTED)
+                                : applicants;
+
+                            if (displayApplicants.length === 0 && showShortlistedView) {
+                                return (
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                                        <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        <h3 className="mt-4 text-lg font-medium text-gray-900">No shortlisted students</h3>
+                                        <p className="mt-2 text-gray-500">No students have been shortlisted yet.</p>
+                                    </div>
+                                );
+                            }
+
+                            return displayApplicants.map((app) => {
+                                const isSelected = shortlistMode ? selectedIds.has(app.id) : finalSelectionMode ? finalSelectedIds.has(app.id) : false;
+                                const showCheckbox = shortlistMode || finalSelectionMode;
 
                             return (
                                 <div
                                     key={app.id}
                                     className={`bg-white rounded-xl shadow-sm border p-5 hover:shadow-md transition-all cursor-pointer ${
-                                        shortlistMode && isSelected
-                                            ? 'border-yellow-400 bg-yellow-50/50 ring-1 ring-yellow-300'
+                                        showCheckbox && isSelected
+                                            ? shortlistMode 
+                                                ? 'border-yellow-400 bg-yellow-50/50 ring-1 ring-yellow-300'
+                                                : 'border-blue-400 bg-blue-50/50 ring-1 ring-blue-300'
                                             : 'border-gray-200 hover:border-blue-200'
                                     }`}
                                 >
                                     <div className="flex items-start gap-3">
-                                        {/* Checkbox column in shortlisting mode */}
-                                        {shortlistMode && (
+                                        {/* Checkbox column in selection modes */}
+                                        {showCheckbox && (
                                             <div className="flex-shrink-0 pt-1">
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        toggleSelectApplicant(app.id);
+                                                        if (shortlistMode) {
+                                                            toggleSelectApplicant(app.id);
+                                                        } else if (finalSelectionMode) {
+                                                            toggleFinalSelectApplicant(app.id);
+                                                        }
                                                     }}
                                                     className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
                                                         isSelected
-                                                            ? 'bg-yellow-500 border-yellow-500 shadow-sm'
-                                                            : 'border-gray-300 bg-white hover:border-yellow-400'
+                                                            ? shortlistMode
+                                                                ? 'bg-yellow-500 border-yellow-500 shadow-sm'
+                                                                : 'bg-blue-500 border-blue-500 shadow-sm'
+                                                            : 'border-gray-300 bg-white hover:border-blue-400'
                                                     }`}
                                                 >
                                                     {isSelected && (
@@ -939,7 +1207,7 @@ const ManageJobs = () => {
                                     </div>
                                 </div>
                             );
-                        })}
+                        })})()}
 
                         {/* Floating Shortlist Action Bar */}
                         {shortlistMode && (
@@ -1031,7 +1299,7 @@ const ManageJobs = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
                                 <span className="text-sm text-purple-800">
-                                    This job will be <strong>closed for new applications</strong> and marked as <strong>Recruitment Completed</strong>
+                                    This job will be <strong>closed for new applications</strong> and marked as <strong>Shortlisting Completed</strong>
                                 </span>
                             </div>
                         </div>
@@ -1048,6 +1316,66 @@ const ManageJobs = () => {
                                 className="flex-1 px-4 py-2.5 bg-yellow-500 text-gray-900 rounded-lg hover:bg-yellow-400 transition-colors font-bold text-sm"
                             >
                                 Confirm &amp; Proceed
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Final Placement Confirmation Modal */}
+            {showFinalPlacementWarning && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Complete Recruitment</h3>
+                                <p className="text-sm text-gray-500">Finalize student placements</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 mb-6">
+                            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <svg className="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-sm text-green-800">
+                                    <strong>{finalSelectedIds.size}</strong> student{finalSelectedIds.size !== 1 ? 's' : ''} will be marked as <strong>placed</strong>
+                                </span>
+                            </div>
+                            {selectedJob?.salary?.amount && (
+                                <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="text-sm text-blue-800">
+                                        Package: <strong>₹{selectedJob.salary.amount.toLocaleString()}</strong> {selectedJob.salary.type === 'yearly' ? 'per year' : 'per month'}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                <p className="text-xs text-purple-800">
+                                    <strong>Note:</strong> Package amount and placement details will be stored for analytics and reporting purposes.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowFinalPlacementWarning(false)}
+                                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleFinalPlacement}
+                                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold text-sm"
+                            >
+                                Confirm &amp; Place
                             </button>
                         </div>
                     </div>

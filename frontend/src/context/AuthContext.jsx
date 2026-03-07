@@ -12,6 +12,9 @@ import { auth, db } from '@config/firebase';
 import { COLLECTIONS } from '@config/constants';
 import emailjs from '@emailjs/browser';
 
+// Initialize EmailJS with public key
+emailjs.init({ publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY });
+
 const AuthContext = createContext({});
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -124,21 +127,42 @@ export const AuthProvider = ({ children }) => {
     // Send OTP via EmailJS
     const sendOTPEmail = async (email, otp, fullName) => {
         try {
-            // EmailJS configuration - replace with your actual service, template, and public key
-            const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_id';
-            const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_id';
-            const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'public_key';
+            const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+            const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+
+            const recipientEmail = (email || '').trim().toLowerCase();
+            if (!recipientEmail) {
+                throw new Error('Recipient email is missing');
+            }
+
+            const otpValue = String(otp || '').trim();
+            if (!otpValue) {
+                throw new Error('Generated OTP is missing');
+            }
 
             await emailjs.send(serviceId, templateId, {
-                to_email: email,
+                // Provide common alias keys so different EmailJS templates can resolve recipient correctly.
+                to_email: recipientEmail,
+                email: recipientEmail,
+                user_email: recipientEmail,
+                recipient_email: recipientEmail,
                 to_name: fullName,
-                otp_code: otp,
+                user_name: fullName,
+                // Provide common alias keys so different templates can render the OTP.
+                otp_code: otpValue,
+                otp: otpValue,
+                verification_code: otpValue,
+                passcode: otpValue,
+                code: otpValue,
                 from_name: 'CareerOS',
-            }, publicKey);
+            });
 
             return true;
         } catch (err) {
-            console.error('Error sending OTP email:', err);
+            console.error('Error sending OTP email:', err?.status, err?.text || err);
+            if (err?.status === 422) {
+                throw new Error('OTP email template is missing recipient mapping. Set the recipient in EmailJS template to {{to_email}}.');
+            }
             throw new Error('Failed to send OTP email. Please try again.');
         }
     };
@@ -148,6 +172,10 @@ export const AuthProvider = ({ children }) => {
         try {
             setError(null);
             const trimmedEmail = email.trim().toLowerCase();
+
+            if (!trimmedEmail) {
+                throw new Error('Please provide a valid email address');
+            }
 
             // Generate a unique pending registration ID using email hash
             const pendingId = btoa(trimmedEmail + Date.now()).replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
@@ -222,18 +250,22 @@ export const AuthProvider = ({ children }) => {
             const uid = newUser.uid;
 
             // Create user document
+            const isStudent = otpData.role === 'student';
+            const needsAdminApproval = otpData.role === 'student' || otpData.role === 'recruiter';
             await setDoc(doc(db, COLLECTIONS.USERS, uid), {
                 uid: uid,
                 email: otpData.email,
                 fullName: otpData.fullName,
                 role: otpData.role,
                 verified: true,
+                // Students and recruiters must be approved by admin before login
+                isAdminVerified: !needsAdminApproval,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
             });
 
             // Create role-specific document
-            if (userData.role === 'student') {
+            if (isStudent) {
                 await setDoc(doc(db, COLLECTIONS.STUDENTS, uid), {
                     uid: uid,
                     ...userData.studentData,
@@ -253,11 +285,18 @@ export const AuthProvider = ({ children }) => {
             // Delete pending registration document (contains password)
             await deleteDoc(doc(db, COLLECTIONS.OTP_VERIFICATION, pendingId));
 
-            // User is now logged in and verified - no sign out needed
-            // Fetch user profile to update context
+            // For students/recruiters: sign out immediately until admin approval
+            if (needsAdminApproval) {
+                await firebaseSignOut(auth);
+                setUser(null);
+                setUserProfile(null);
+                return { role: otpData.role, verified: true, needsAdminApproval: true };
+            }
+
+            // Non-students: logged in directly
             await fetchUserProfile(uid);
 
-            return { role: otpData.role, verified: true };
+            return { role: otpData.role, verified: true, needsAdminApproval: false };
         } catch (err) {
             setError(err.message);
             throw err;
@@ -302,6 +341,22 @@ export const AuthProvider = ({ children }) => {
         try {
             setError(null);
             const { user } = await signInWithEmailAndPassword(auth, email, password);
+
+            // Check if user is admin-verified (students and recruiters require approval)
+            const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, user.uid));
+            if (userDoc.exists()) {
+                const data = userDoc.data();
+                if ((data.role === 'student' || data.role === 'recruiter') && data.isAdminVerified === false) {
+                    await firebaseSignOut(auth);
+                    setUser(null);
+                    setUserProfile(null);
+                    if (data.role === 'recruiter') {
+                        throw new Error('your request for new accound sent to admin. you may login once the admin verifys');
+                    }
+                    throw new Error('Your account is pending admin verification. Please wait for approval.');
+                }
+            }
+
             return user;
         } catch (err) {
             setError(err.message);

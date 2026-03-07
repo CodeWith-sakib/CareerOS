@@ -1,7 +1,20 @@
-import { Outlet } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 
 const PublicLayout = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const handleGetStarted = () => {
+        if (location.pathname === '/') {
+            document.getElementById('portals')?.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            navigate('/');
+            setTimeout(() => {
+                document.getElementById('portals')?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50">
             {/* Header */}
@@ -26,12 +39,12 @@ const PublicLayout = () => {
                             >
                                 Sign In
                             </Link>
-                            <Link
-                                to="/register"
+                            <button
+                                onClick={handleGetStarted}
                                 className="btn-primary btn-md"
                             >
                                 Get Started
-                            </Link>
+                            </button>
                         </div>
                     </div>
                 </nav>

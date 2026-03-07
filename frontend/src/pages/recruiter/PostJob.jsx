@@ -381,13 +381,21 @@ const PostJob = () => {
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
                 status: isDraft ? 'draft' : 'active',
+                isAdminApproved: false, // Job requires admin approval before appearing to students
             };
 
             // Save to Firestore
             await addDoc(collection(db, COLLECTIONS.JOBS), jobDocument);
 
             setSubmitSuccess(true);
-            toast.success(isDraft ? 'Job saved as draft!' : 'Job published successfully!');
+            if (isDraft) {
+                toast.success('Job saved as draft!');
+            } else {
+                toast.success('Job posting request sent to admin for approval!', {
+                    duration: 4000,
+                    icon: '⏳',
+                });
+            }
             setTimeout(() => {
                 navigate('/recruiter/jobs');
             }, 1500);
@@ -664,7 +672,9 @@ const PostJob = () => {
                         <InputField
                             label="Salary Amount"
                             name="salaryAmount"
-                            placeholder="e.g., ₹8,00,000 or ₹25,000/month"
+                            type="number"
+                            required
+                            placeholder="e.g., 800000 or 25000"
                         />
                         <InputField label="Bonus / Incentives" name="bonus" placeholder="e.g., Performance bonus" />
                         <div className="flex items-end pb-2">

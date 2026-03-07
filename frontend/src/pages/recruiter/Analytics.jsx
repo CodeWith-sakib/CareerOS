@@ -128,8 +128,10 @@ const RecruiterAnalytics = () => {
     const { user } = useAuth();
     const [jobs, setJobs] = useState([]);
     const [applications, setApplications] = useState([]);
+    const [allCollegeApplications, setAllCollegeApplications] = useState([]);
     const [loading, setLoading] = useState(true);
     const appUnsubRef = useRef(null);
+    const collegeAppUnsubRef = useRef(null);
     const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0, content: null });
 
     const showTip = (e, content) => setTooltip({ show: true, x: e.clientX, y: e.clientY, content });
@@ -172,6 +174,17 @@ const RecruiterAnalytics = () => {
         appUnsubRef.current = () => unsubs.forEach(u => u());
         return () => { if (appUnsubRef.current) appUnsubRef.current(); };
     }, [jobs]);
+
+    /* ── Subscribe to ALL college applications for benchmarking ── */
+    useEffect(() => {
+        if (collegeAppUnsubRef.current) { collegeAppUnsubRef.current(); }
+        const q = query(collection(db, COLLECTIONS.APPLICATIONS));
+        const unsub = onSnapshot(q, (snap) => {
+            setAllCollegeApplications(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+        collegeAppUnsubRef.current = unsub;
+        return () => { if (collegeAppUnsubRef.current) collegeAppUnsubRef.current(); };
+    }, []);
 
     /* ════════════════════════════════════════════
        COMPUTED ANALYTICS DATA
@@ -256,6 +269,28 @@ const RecruiterAnalytics = () => {
         const decided = selected + rejected;
         const pending = totalApps - decided;
 
+        // Package Analytics - for placed students only
+        const placedApps = applications.filter(a => a.status === 'placed' && a.packageAmount && a.packageAmount > 0);
+        const packages = placedApps.map(a => a.packageAmount).sort((a, b) => a - b);
+        const avgPackage = packages.length > 0 ? (packages.reduce((sum, p) => sum + p, 0) / packages.length) : 0;
+        const medianPackage = packages.length > 0 ? 
+            (packages.length % 2 === 0 ? 
+                (packages[packages.length / 2 - 1] + packages[packages.length / 2]) / 2 : 
+                packages[Math.floor(packages.length / 2)]) : 0;
+        const highestPackage = packages.length > 0 ? packages[packages.length - 1] : 0;
+        const placedCount = placedApps.length;
+
+        // College-wide package analytics for benchmarking
+        const collegePlacedApps = allCollegeApplications.filter(a => a.status === 'placed' && a.packageAmount && a.packageAmount > 0);
+        const collegePackages = collegePlacedApps.map(a => a.packageAmount).sort((a, b) => a - b);
+        const collegeAvgPackage = collegePackages.length > 0 ? (collegePackages.reduce((sum, p) => sum + p, 0) / collegePackages.length) : 0;
+        const collegeMedianPackage = collegePackages.length > 0 ? 
+            (collegePackages.length % 2 === 0 ? 
+                (collegePackages[collegePackages.length / 2 - 1] + collegePackages[collegePackages.length / 2]) / 2 : 
+                collegePackages[Math.floor(collegePackages.length / 2)]) : 0;
+        const collegeHighestPackage = collegePackages.length > 0 ? collegePackages[collegePackages.length - 1] : 0;
+        const collegePlacedCount = collegePlacedApps.length;
+
         return {
             totalJobs, activeJobs, closedJobs, draftJobs, completedJobs,
             totalApps, applied, shortlisted, interview, selected, rejected,
@@ -263,6 +298,8 @@ const RecruiterAnalytics = () => {
             jobBreakdown, jobTypeMap, timeline, maxTimelineCount,
             branchData, maxBranch, funnelConversions, topJobs, maxTopJob,
             decided, pending,
+            avgPackage, medianPackage, highestPackage, placedCount,
+            collegeAvgPackage, collegeMedianPackage, collegeHighestPackage, collegePlacedCount,
         };
     }, [jobs, applications]);
 
@@ -656,6 +693,182 @@ const RecruiterAnalytics = () => {
                     </div>
                 </div>
             </div>
+
+            {/* ═══ PACKAGE ANALYTICS SECTION ═══ */}
+            {stats.placedCount > 0 && (
+                <div className="space-y-6">
+                <div className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80 rounded-2xl shadow-sm border border-blue-200/50 p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-200/50">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900">Your Package Analytics</h2>
+                            <p className="text-xs text-gray-500 mt-0.5">Package statistics for candidates you recruited</p>
+                        </div>
+                        <div className="ml-auto px-3 py-1.5 bg-blue-100 border border-blue-300 rounded-lg">
+                            <span className="text-xs font-bold text-blue-700">{stats.placedCount} placed by you</span>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        {/* Highest Package */}
+                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-500/90 to-orange-500/90 p-6 shadow-lg">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs font-semibold text-white/90 bg-white/15 px-2.5 py-1 rounded-lg backdrop-blur-sm">MAX</span>
+                                </div>
+                                <p className="text-sm text-white/90 font-medium mb-1">Highest Package</p>
+                                <p className="text-3xl font-bold text-white mb-1">₹{stats.highestPackage.toLocaleString()}</p>
+                                <p className="text-xs text-white/80">per year</p>
+                            </div>
+                        </div>
+
+                        {/* Average Package */}
+                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/90 to-indigo-500/90 p-6 shadow-lg">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs font-semibold text-white/90 bg-white/15 px-2.5 py-1 rounded-lg backdrop-blur-sm">AVG</span>
+                                </div>
+                                <p className="text-sm text-white/90 font-medium mb-1">Average Package</p>
+                                <p className="text-3xl font-bold text-white mb-1">₹{Math.round(stats.avgPackage).toLocaleString()}</p>
+                                <p className="text-xs text-white/80">per year</p>
+                            </div>
+                        </div>
+
+                        {/* Median Package */}
+                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/90 to-pink-500/90 p-6 shadow-lg">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs font-semibold text-white/90 bg-white/15 px-2.5 py-1 rounded-lg backdrop-blur-sm">MED</span>
+                                </div>
+                                <p className="text-sm text-white/90 font-medium mb-1">Median Package</p>
+                                <p className="text-3xl font-bold text-white mb-1">₹{Math.round(stats.medianPackage).toLocaleString()}</p>
+                                <p className="text-xs text-white/80">per year</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* College-wide Benchmark */}
+                {stats.collegePlacedCount > 0 && (
+                <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/80 rounded-2xl shadow-sm border border-emerald-200/50 p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-200/50">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900">College-Wide Package Benchmark</h2>
+                            <p className="text-xs text-gray-500 mt-0.5">Overall placement statistics across all recruiters</p>
+                        </div>
+                        <div className="ml-auto px-3 py-1.5 bg-emerald-100 border border-emerald-300 rounded-lg">
+                            <span className="text-xs font-bold text-emerald-700">{stats.collegePlacedCount} total placements</span>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        {/* Highest Package */}
+                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-500/90 to-orange-500/90 p-6 shadow-lg">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs font-semibold text-white/90 bg-white/15 px-2.5 py-1 rounded-lg backdrop-blur-sm">MAX</span>
+                                </div>
+                                <p className="text-sm text-white/90 font-medium mb-1">Highest Package</p>
+                                <p className="text-3xl font-bold text-white mb-1">₹{stats.collegeHighestPackage.toLocaleString()}</p>
+                                <p className="text-xs text-white/80">per year</p>
+                            </div>
+                        </div>
+
+                        {/* Average Package */}
+                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/90 to-indigo-500/90 p-6 shadow-lg">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs font-semibold text-white/90 bg-white/15 px-2.5 py-1 rounded-lg backdrop-blur-sm">AVG</span>
+                                </div>
+                                <p className="text-sm text-white/90 font-medium mb-1">Average Package</p>
+                                <p className="text-3xl font-bold text-white mb-1">₹{Math.round(stats.collegeAvgPackage).toLocaleString()}</p>
+                                <p className="text-xs text-white/80">per year</p>
+                            </div>
+                        </div>
+
+                        {/* Median Package */}
+                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/90 to-pink-500/90 p-6 shadow-lg">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs font-semibold text-white/90 bg-white/15 px-2.5 py-1 rounded-lg backdrop-blur-sm">MED</span>
+                                </div>
+                                <p className="text-sm text-white/90 font-medium mb-1">Median Package</p>
+                                <p className="text-3xl font-bold text-white mb-1">₹{Math.round(stats.collegeMedianPackage).toLocaleString()}</p>
+                                <p className="text-xs text-white/80">per year</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Comparison Note */}
+                    <div className="mt-5 p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-emerald-200/50">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-gray-900">Performance Benchmark</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                    {stats.avgPackage > stats.collegeAvgPackage 
+                                        ? `Your average package (₹${Math.round(stats.avgPackage).toLocaleString()}) is ${((stats.avgPackage / stats.collegeAvgPackage - 1) * 100).toFixed(1)}% above the college average!` 
+                                        : stats.avgPackage < stats.collegeAvgPackage 
+                                        ? `College average is ₹${Math.round(stats.collegeAvgPackage).toLocaleString()}. Keep improving your recruitment quality!`
+                                        : `Your performance matches the college average of ₹${Math.round(stats.collegeAvgPackage).toLocaleString()}.`
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            </div>
+            )}
 
             {/* ═══ ROW 8 — PER-JOB BREAKDOWN TABLE ═══ */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
