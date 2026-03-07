@@ -16,6 +16,8 @@ import {
     StarIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { createAccountVerifiedNotification } from '@services/notificationService';
+import { sendAccountVerifiedEmail } from '@services/emailService';
 
 const StudentVerification = () => {
     const [students, setStudents] = useState([]);
@@ -88,6 +90,14 @@ const StudentVerification = () => {
             setStudents((prev) =>
                 prev.map((s) => (s.id === studentId ? { ...s, isAdminVerified: true } : s))
             );
+
+            // Send email & in-app notification
+            const student = students.find((s) => s.id === studentId);
+            if (student?.email) {
+                sendAccountVerifiedEmail({ toEmail: student.email, toName: studentName, role: 'student' });
+            }
+            createAccountVerifiedNotification(studentId, 'student');
+
             toast.success(`${studentName} has been verified`);
         } catch (error) {
             console.error('Error verifying student:', error);

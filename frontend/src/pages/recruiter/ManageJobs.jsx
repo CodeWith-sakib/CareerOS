@@ -4,6 +4,8 @@ import { collection, query, where, orderBy, getDocs, doc, deleteDoc, updateDoc, 
 import { db } from '@config/firebase';
 import { COLLECTIONS, JOB_TYPE_LABELS, STATUS_LABELS, STATUS_COLORS, APPLICATION_STATUS } from '@config/constants';
 import { useAuth } from '@context/AuthContext';
+import { createApplicationStatusNotification } from '@services/notificationService';
+import { sendApplicationStatusEmail } from '@services/emailService';
 
 const ManageJobs = () => {
     const navigate = useNavigate();
@@ -371,6 +373,28 @@ const ManageJobs = () => {
 
             await batch.commit();
 
+            // Send email & notification to shortlisted students
+            for (const appId of selectedIds) {
+                const app = applicants.find((a) => a.id === appId);
+                if (app?.studentId) {
+                    createApplicationStatusNotification(
+                        app.studentId,
+                        appId,
+                        selectedJob?.title || 'a job',
+                        'shortlisted'
+                    );
+                    if (app.studentEmail) {
+                        sendApplicationStatusEmail({
+                            toEmail: app.studentEmail,
+                            toName: app.studentName || 'Student',
+                            jobTitle: selectedJob?.title || '',
+                            status: 'shortlisted',
+                            companyName: selectedJob?.companyName || '',
+                        });
+                    }
+                }
+            }
+
             // Close the job — mark recruitment as completed
             if (selectedJob?.id) {
                 await updateDoc(doc(db, COLLECTIONS.JOBS, selectedJob.id), {
@@ -458,6 +482,28 @@ const ManageJobs = () => {
             }
 
             await batch.commit();
+
+            // Send email & notification to placed students
+            for (const appId of finalSelectedIds) {
+                const app = applicants.find((a) => a.id === appId);
+                if (app?.studentId) {
+                    createApplicationStatusNotification(
+                        app.studentId,
+                        appId,
+                        selectedJob?.title || 'a job',
+                        'placed'
+                    );
+                    if (app.studentEmail) {
+                        sendApplicationStatusEmail({
+                            toEmail: app.studentEmail,
+                            toName: app.studentName || 'Student',
+                            jobTitle: selectedJob?.title || '',
+                            status: 'placed',
+                            companyName: selectedJob?.companyName || '',
+                        });
+                    }
+                }
+            }
 
             // Update job status to placement_completed
             if (selectedJob?.id) {

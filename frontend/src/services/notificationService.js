@@ -100,6 +100,28 @@ export const createApplicationReceivedNotification = async (
     });
 };
 
+// Create account verified notification
+export const createAccountVerifiedNotification = async (userId, role) => {
+    return await createNotification({
+        userId,
+        type: NOTIFICATION_TYPES.ACCOUNT_VERIFIED,
+        title: 'Account Verified',
+        message: `Your ${role} account has been verified by the admin. Welcome to CareerOS!`,
+        data: { role },
+    });
+};
+
+// Create job approved notification (for recruiter)
+export const createJobApprovedNotification = async (recruiterId, jobId, jobTitle) => {
+    return await createNotification({
+        userId: recruiterId,
+        type: NOTIFICATION_TYPES.JOB_APPROVED,
+        title: 'Job Posting Approved',
+        message: `Your job posting "${jobTitle}" has been approved and is now live for students.`,
+        data: { jobId },
+    });
+};
+
 // Get user notifications
 export const getUserNotifications = async (userId, limitCount = 50) => {
     try {
@@ -220,6 +242,8 @@ export default {
     createInterviewNotification,
     createNewJobNotification,
     createApplicationReceivedNotification,
+    createAccountVerifiedNotification,
+    createJobApprovedNotification,
     getUserNotifications,
     getUnreadCount,
     markAsRead,

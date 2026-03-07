@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@context/AuthContext';
+import NotificationPanel from '@components/NotificationPanel';
 import {
     HomeIcon,
     BriefcaseIcon,
     DocumentTextIcon,
     CalendarIcon,
     UserCircleIcon,
-    BellIcon,
     ArrowRightOnRectangleIcon,
     Bars3Icon,
     XMarkIcon,
@@ -138,10 +138,7 @@ const StudentLayout = () => {
 
                         <div className="flex items-center space-x-4">
                             {/* Notifications */}
-                            <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                                <BellIcon className="w-6 h-6" />
-                                <span className="absolute top-1 right-1 w-2 h-2 bg-error-500 rounded-full"></span>
-                            </button>
+                            <NotificationPanel />
                         </div>
                     </div>
                 </header>
