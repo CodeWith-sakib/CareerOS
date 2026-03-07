@@ -12,12 +12,14 @@ import {
     ArrowRightOnRectangleIcon,
     Bars3Icon,
     XMarkIcon,
+    CalendarIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
     { name: 'Dashboard', href: '/recruiter/dashboard', icon: HomeIcon },
     { name: 'Post Job', href: '/recruiter/post-job', icon: PlusCircleIcon },
     { name: 'Manage Jobs', href: '/recruiter/jobs', icon: BriefcaseIcon },
+    { name: 'Interviews', href: '/recruiter/interviews', icon: CalendarIcon },
     { name: 'Analytics', href: '/recruiter/analytics', icon: ChartBarIcon },
     { name: 'Profile', href: '/recruiter/profile', icon: UserCircleIcon },
 ];
@@ -81,8 +83,8 @@ const RecruiterLayout = () => {
                                     key={item.name}
                                     to={item.href}
                                     className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${isActive
-                                            ? 'bg-primary-50 text-primary-700 font-medium'
-                                            : 'text-gray-700 hover:bg-gray-100'
+                                        ? 'bg-primary-50 text-primary-700 font-medium'
+                                        : 'text-gray-700 hover:bg-gray-100'
                                         }`}
                                 >
                                     <item.icon className="w-5 h-5" />
