@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@config/firebase';
-import { 
-    ChartBarIcon, 
-    UserGroupIcon, 
+import {
+    ChartBarIcon,
+    UserGroupIcon,
     BuildingOfficeIcon,
     BriefcaseIcon,
     CheckCircleIcon,
@@ -29,7 +29,7 @@ const PlacementAnalytics = () => {
         const fetchAllData = async () => {
             try {
                 setLoading(true);
-                
+
                 // Fetch all collections in parallel
                 const [usersSnap, studentsSnap, recruitersSnap, jobsSnap, applicationsSnap] = await Promise.all([
                     getDocs(collection(db, 'users')),
@@ -67,12 +67,12 @@ const PlacementAnalytics = () => {
         const totalUsers = users.length;
         const verifiedUsers = users.filter(u => u.isAdminVerified === true).length;
         const pendingUsers = users.filter(u => u.isAdminVerified === false).length;
-        
+
         // Student stats
         const totalStudents = students.length;
         const verifiedStudents = users.filter(u => u.role === 'student' && u.isAdminVerified === true).length;
         const profileCompleteStudents = students.filter(s => s.profileCompleted === true).length;
-        
+
         // CGPA Analysis
         const cgpaRanges = {
             '9.0+': students.filter(s => parseFloat(s.cgpa) >= 9.0).length,
@@ -80,7 +80,7 @@ const PlacementAnalytics = () => {
             '7.0-7.9': students.filter(s => parseFloat(s.cgpa) >= 7.0 && parseFloat(s.cgpa) < 8.0).length,
             'Below 7.0': students.filter(s => parseFloat(s.cgpa) < 7.0).length,
         };
-        const avgCGPA = students.length > 0 
+        const avgCGPA = students.length > 0
             ? (students.reduce((sum, s) => sum + (parseFloat(s.cgpa) || 0), 0) / students.length).toFixed(2)
             : '0.00';
 
@@ -96,7 +96,7 @@ const PlacementAnalytics = () => {
         // Recruiter stats
         const totalRecruiters = recruiters.length;
         const verifiedRecruiters = users.filter(u => u.role === 'recruiter' && u.isAdminVerified === true).length;
-        
+
         // Industry Distribution
         const industryCounts = {};
         recruiters.forEach(r => {
@@ -116,18 +116,27 @@ const PlacementAnalytics = () => {
         const acceptedApplications = applications.filter(a => a.status === 'accepted').length;
         const pendingApplications = applications.filter(a => a.status === 'pending').length;
         const rejectedApplications = applications.filter(a => a.status === 'rejected').length;
-        
-        const placementRate = totalApplications > 0 
-            ? ((acceptedApplications / totalApplications) * 100).toFixed(1) 
+
+        const placementRate = totalApplications > 0
+            ? ((acceptedApplications / totalApplications) * 100).toFixed(1)
             : '0.0';
 
-        // Package Analytics - for all placed students
-        const placedApps = applications.filter(a => a.status === 'placed' && a.packageAmount && a.packageAmount > 0);
-        const packages = placedApps.map(a => a.packageAmount).sort((a, b) => a - b);
+        // Package Analytics — salary comes from the job posting (salary.amount)
+        // Build a jobId → salary lookup from the jobs collection
+        const jobSalaryMap = {};
+        jobs.forEach(j => {
+            const amt = parseFloat(j.salary?.amount);
+            if (amt > 0) jobSalaryMap[j.id] = amt;
+        });
+        // Placed / selected students whose job has a valid salary
+        const placedApps = applications.filter(a =>
+            (a.status === 'placed' || a.status === 'selected') && jobSalaryMap[a.jobId]
+        );
+        const packages = placedApps.map(a => jobSalaryMap[a.jobId]).sort((a, b) => a - b);
         const avgPackage = packages.length > 0 ? (packages.reduce((sum, p) => sum + p, 0) / packages.length) : 0;
-        const medianPackage = packages.length > 0 ? 
-            (packages.length % 2 === 0 ? 
-                (packages[packages.length / 2 - 1] + packages[packages.length / 2]) / 2 : 
+        const medianPackage = packages.length > 0 ?
+            (packages.length % 2 === 0 ?
+                (packages[packages.length / 2 - 1] + packages[packages.length / 2]) / 2 :
                 packages[Math.floor(packages.length / 2)]) : 0;
         const highestPackage = packages.length > 0 ? packages[packages.length - 1] : 0;
         const placedCount = placedApps.length;
@@ -366,7 +375,7 @@ const PlacementAnalytics = () => {
                                         <span className="text-sm font-bold text-gray-900">{count} students</span>
                                     </div>
                                     <div className="w-full bg-gray-100/80 rounded-full h-3 overflow-hidden border border-gray-200/50">
-                                        <div 
+                                        <div
                                             className={`h-full ${colors[range]} transition-all duration-500 shadow-sm`}
                                             style={{ width: `${percentage}%` }}
                                         ></div>
@@ -408,7 +417,7 @@ const PlacementAnalytics = () => {
                                                     <span className="text-sm font-bold text-gray-900 ml-2">{count}</span>
                                                 </div>
                                                 <div className="w-full bg-gray-100/80 rounded-full h-3 overflow-hidden border border-gray-200/50">
-                                                    <div 
+                                                    <div
                                                         className={`h-full ${gradients[idx % gradients.length]} transition-all duration-500 shadow-sm`}
                                                         style={{ width: `${percentage}%` }}
                                                     ></div>
@@ -443,7 +452,7 @@ const PlacementAnalytics = () => {
                             <span className="text-sm font-bold text-emerald-700">{analytics.placedCount} Students Placed</span>
                         </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Highest Package */}
                         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/95 to-orange-600/95 p-7 shadow-xl shadow-orange-200/50">

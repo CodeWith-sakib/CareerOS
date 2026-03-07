@@ -75,10 +75,38 @@ export const sendApplicationStatusEmail = async ({ toEmail, toName, jobTitle, st
     return sendContentEmail(toEmail, content);
 };
 
+// Interview scheduled
+export const sendInterviewScheduledEmail = async ({ toEmail, toName, companyName, role, date, time, meetingLink }) => {
+    const content = `Hi ${toName},\n\nYou have been scheduled for an interview!\n\nCompany: ${companyName}\nRole: ${role}\nDate: ${date}\nTime: ${time}${meetingLink ? `\nMeeting Link: ${meetingLink}` : ''}\n\nGood luck!`;
+    return sendContentEmail(toEmail, content);
+};
+
+// Interview rescheduled
+export const sendInterviewRescheduledEmail = async ({ toEmail, toName, companyName, role, date, time, meetingLink }) => {
+    const content = `Hi ${toName},\n\nYour interview has been rescheduled.\n\nCompany: ${companyName}\nRole: ${role}\nNew Date: ${date}\nNew Time: ${time}${meetingLink ? `\nMeeting Link: ${meetingLink}` : ''}\n\nPlease update your schedule accordingly.`;
+    return sendContentEmail(toEmail, content);
+};
+
+// Interview cancelled
+export const sendInterviewCancelledEmail = async ({ toEmail, toName, companyName, role }) => {
+    const content = `Hi ${toName},\n\nYour interview for "${role}" at ${companyName} has been cancelled.\n\nPlease check your dashboard for more details.`;
+    return sendContentEmail(toEmail, content);
+};
+
+// Interview reminder
+export const sendInterviewReminderEmail = async ({ toEmail, toName, companyName, role, date, time, meetingLink }) => {
+    const content = `Hi ${toName},\n\nThis is a reminder that your interview is coming up soon!\n\nCompany: ${companyName}\nRole: ${role}\nDate: ${date}\nTime: ${time}${meetingLink ? `\nMeeting Link: ${meetingLink}` : ''}\n\nBe prepared and good luck!`;
+    return sendContentEmail(toEmail, content);
+};
+
 export default {
     initEmailJS,
     sendAccountVerifiedEmail,
     sendJobApprovedEmail,
     sendNewJobEmailToStudent,
     sendApplicationStatusEmail,
+    sendInterviewScheduledEmail,
+    sendInterviewRescheduledEmail,
+    sendInterviewCancelledEmail,
+    sendInterviewReminderEmail,
 };
