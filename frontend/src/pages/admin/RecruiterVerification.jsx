@@ -19,6 +19,8 @@ import {
     CheckBadgeIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { createAccountVerifiedNotification } from '@services/notificationService';
+import { sendAccountVerifiedEmail } from '@services/emailService';
 
 const RecruiterVerification = () => {
     const [recruiters, setRecruiters] = useState([]);
@@ -87,6 +89,14 @@ const RecruiterVerification = () => {
             setRecruiters((prev) =>
                 prev.map((r) => (r.id === recruiterId ? { ...r, isAdminVerified: true } : r))
             );
+
+            // Send email & in-app notification
+            const recruiter = recruiters.find((r) => r.id === recruiterId);
+            if (recruiter?.email) {
+                sendAccountVerifiedEmail({ toEmail: recruiter.email, toName: recruiter.fullName || companyName, role: 'recruiter' });
+            }
+            createAccountVerifiedNotification(recruiterId, 'recruiter');
+
             toast.success(`${companyName} has been verified`);
         } catch (error) {
             console.error('Error verifying recruiter:', error);

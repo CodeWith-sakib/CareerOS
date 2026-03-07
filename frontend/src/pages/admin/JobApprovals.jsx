@@ -18,7 +18,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckBadgeIcon } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
-import { JOB_TYPE_LABELS } from '@config/constants';
+import { JOB_TYPE_LABELS, COLLECTIONS } from '@config/constants';
+import { createJobApprovedNotification, createNewJobNotification } from '@services/notificationService';
+import { sendJobApprovedEmail, sendNewJobEmailToStudent } from '@services/emailService';
 
 const JobApprovals = () => {
     const [jobs, setJobs] = useState([]);
@@ -100,6 +102,47 @@ const JobApprovals = () => {
                 approvedAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
             });
+
+            // Find the job to get recruiter info
+            const job = jobs.find((j) => j.id === jobId);
+
+            // Notify recruiter: email + in-app notification
+            if (job?.recruiterId) {
+                createJobApprovedNotification(job.recruiterId, jobId, jobTitle);
+                if (job.recruiterEmail) {
+                    sendJobApprovedEmail({
+                        toEmail: job.recruiterEmail,
+                        toName: job.recruiterName || 'Recruiter',
+                        jobTitle,
+                        companyName: job.recruiterCompany || job.companyName || '',
+                    });
+                }
+            }
+
+            // Notify all verified students about the new job
+            try {
+                const studentsQuery = query(
+                    collection(db, COLLECTIONS.USERS),
+                    where('role', '==', 'student'),
+                    where('isAdminVerified', '==', true)
+                );
+                const snapshot = await getDocs(studentsQuery);
+                snapshot.forEach((studentDoc) => {
+                    const sData = studentDoc.data();
+                    createNewJobNotification(studentDoc.id, jobId, jobTitle);
+                    if (sData.email) {
+                        sendNewJobEmailToStudent({
+                            toEmail: sData.email,
+                            toName: sData.fullName || 'Student',
+                            jobTitle,
+                            companyName: job?.recruiterCompany || job?.companyName || '',
+                        });
+                    }
+                });
+            } catch (notifErr) {
+                console.error('Error notifying students:', notifErr);
+            }
+
             setJobs((prev) => prev.filter((j) => j.id !== jobId));
             toast.success(`"${jobTitle}" has been approved and is now live for students!`, {
                 duration: 4000,

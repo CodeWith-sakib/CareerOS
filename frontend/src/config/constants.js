@@ -66,6 +66,8 @@ export const NOTIFICATION_TYPES = {
     APPLICATION_RECEIVED: 'application_received',
     PROFILE_UPDATE: 'profile_update',
     SYSTEM: 'system',
+    ACCOUNT_VERIFIED: 'account_verified',
+    JOB_APPROVED: 'job_approved',
 };
 
 // Firestore Collection Names
