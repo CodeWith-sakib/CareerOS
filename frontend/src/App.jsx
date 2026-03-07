@@ -35,6 +35,7 @@ import PostJob from '@pages/recruiter/PostJob';
 import ManageJobs from '@pages/recruiter/ManageJobs';
 import Candidates from '@pages/recruiter/Candidates';
 import RecruiterAnalytics from '@pages/recruiter/Analytics';
+import ScheduleInterview from '@pages/recruiter/ScheduleInterview';
 
 // Admin Pages
 import AdminDashboard from '@pages/admin/Dashboard';
@@ -164,6 +165,7 @@ function App() {
                 <Route path="jobs/:jobId/edit" element={<PostJob />} />
                 <Route path="jobs/:jobId/candidates" element={<Candidates />} />
                 <Route path="analytics" element={<RecruiterAnalytics />} />
+                <Route path="interviews" element={<ScheduleInterview />} />
             </Route>
 
             {/* Admin Routes */}
